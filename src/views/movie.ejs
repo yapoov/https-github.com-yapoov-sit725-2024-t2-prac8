@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title><%= movie.title %></title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+</head>
+<body>
+<nav>
+    <div class="nav-wrapper">
+        <a href="/" class="brand-logo"> <span style="padding-left: 1rem;">FLICKR</span></a>
+    </div>
+</nav>
+<div class="container" style="padding-top:2rem">
+    <div class="row">
+        <div class="col s12 m4">
+            <img class="movie-poster responsive-img" src="<%= movie.poster %>" alt="<%= movie.title %>">
+        </div>
+
+        <div class="col s12 m8">
+            <h1><%= movie.title %></h1>
+            <p>Release Year: <%= movie.year %></p>
+            <p>Genre: <%= movie.genres.join(', ') %></p>
+            <p>Rating: <%= movie.imdb.rating %></p>
+            <p>Synopsis: <%= movie.fullplot %></p>
+
+            <div class="rating-stars"></div> 
+        </div>
+    </div>
+
+    <div class="comment-section">
+        <h2>Comments</h2>
+
+        <div class="row">
+            <form class="col s12" id="comment-form" action="/api/movie/<%= movie._id %>/addcomment" method="post">
+                <label for="comment-text">Add Your Comment</label>
+                <div class="row">
+                    <div class="input-field col s6">
+                        <input id="username" name="username" type="text" class="validate" required>
+                        <label for="username">Username</label>
+                    </div>
+                </div>
+                <textarea id="comment-text" name="text" class="materialize-textarea"></textarea>
+
+                <button class="btn waves-effect waves-light" type="submit">
+                    Submit Comment
+                </button>
+            </form>
+        </div>
+        <div id="comment-list">
+            <% comments.forEach(comment => { %>
+                <div class="card comment-card">
+                    <div class="card-content">
+                        <span class="card-title grey-text text-darken-4"><%= comment.name %></span>
+                        <p><%= comment.text %></p>
+                    </div>
+                    <div class="card-action">
+                        <span class="comment-date"><%= new Date(comment.date).toUTCString() %></span> 
+                    </div>
+                </div>
+            <% }); %>
+        </div>
+
+    </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+</body>
+</html>
