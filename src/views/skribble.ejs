@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>MOVIE SKRIBBLE</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
+    />
+  </head>
+  <body>
+    <%- include('nav') %>
+    <div class="container">
+      <div class="card-panel col s12">
+        <div id="timer" style="margin-bottom: 10px">Time left:</div>
+        <div id="currentWord"></div>
+      </div>
+    </div>
+    <div class="container row" style="height: 600px">
+      <ul class="collection col s2" id="players" style="margin: 0"></ul>
+      <div class="col s7" style="display: flex; flex-direction: column">
+        <canvas id="canvas" width="600" height="600"> </canvas>
+        <div id="colorPalette"></div>
+        <div class="colorRow">
+          <div
+            class="colorBlock"
+            style="background-color: #000000"
+            data-color="#000000"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #ff0000"
+            data-color="#FF0000"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #00ff00"
+            data-color="#00FF00"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #0000ff"
+            data-color="#0000FF"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #ffff00"
+            data-color="#FFFF00"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #ff00ff"
+            data-color="#FF00FF"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #00ffff"
+            data-color="#00FFFF"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #ffffff"
+            data-color="#FFFFFF"
+          ></div>
+        </div>
+
+        <div class="colorRow">
+          <div
+            class="colorBlock"
+            style="background-color: #c0c0c0"
+            data-color="#C0C0C0"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #808080"
+            data-color="#808080"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #800000"
+            data-color="#800000"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #808000"
+            data-color="#808000"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #008000"
+            data-color="#008000"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #800080"
+            data-color="#800080"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #008080"
+            data-color="#008080"
+          ></div>
+          <div
+            class="colorBlock"
+            style="background-color: #000080"
+            data-color="#000080"
+          ></div>
+        </div>
+      </div>
+      <div id="chatWindow" class="col s3">
+        <ul id="chat" style="flex-grow: 1; margin: 0 0 0 0"></ul>
+        <input
+          id="guessInput"
+          type="text"
+          placeholder="Enter your guess"
+          style="margin: 0"
+        />
+      </div>
+    </div>
+  </body>
+
+  <script
+    src="https://cdn.socket.io/4.7.5/socket.io.min.js"
+    integrity="sha384-2huaZvOR9iDzHqslqwpR87isEmrfxqyWOF7hr7BY6KG0+hVKLoEXMPUJw3ynWuhO"
+    crossorigin="anonymous"
+  ></script>
+  <script>
+    const socket = io();
+
+    socket.on("requestName", () => {
+      const playerName = prompt("Enter your name:");
+      socket.emit("sendName", playerName || "Anonymous");
+    });
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    let drawing = false;
+    let isDrawingTurn = false;
+    let selectedColor = "#000000";
+    let prevX = 0;
+    let prevY = 0;
+    const colorPalette = document.getElementById("colorPalette");
+    colorPalette.addEventListener("click", (event) => {
+      if (event.target.classList.contains("colorBlock")) {
+        selectedColor = event.target.getAttribute("data-color");
+        console.log(selectedColor);
+        document
+          .querySelectorAll(".colorBlock")
+          .forEach((c) => c.classList.remove("selected"));
+        event.target.classList.add("selected");
+      }
+    });
+
+    socket.on("newRound", ({ drawer, wordHangman }) => {
+      isDrawingTurn = false;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      document.getElementById("currentWord").innerText = wordHangman;
+      document.getElementById(drawer).querySelector("p").innerText = "DRAWING";
+    });
+
+    socket.on("correctGuess", ({ name, word }) => {
+      alert(`${name} guessed the word correctly! The word was: ${word}`);
+    });
+
+    socket.on("yourTurn", (currentWord) => {
+      isDrawingTurn = true;
+      alert("It's your turn to draw!");
+      document.getElementById("currentWord").innerText = currentWord;
+    });
+    socket.on("updatePlayers", (players) => {
+      const playersList = document.getElementById("players");
+      console.log(players);
+      playersList.innerHTML = "";
+      players.forEach((player) => {
+        let html = `
+        <li id=${player.id} class="collection-item avatar">
+          <img src="/avatars/${player.avatar}" alt="" class="circle responsive-img">
+            <span class="title">${player.name}</span>
+            <p></p>
+        </li>`;
+        playersList.appendChild(createElementFromHTML(html));
+      });
+    });
+
+    function drawLine(fromX, fromY, toX, toY, color) {
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 5;
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+    }
+
+    canvas.addEventListener("mousedown", () => {
+      if (isDrawingTurn) {
+        drawing = true;
+        prevX = event.clientX - canvas.offsetLeft;
+        prevY = event.clientY - canvas.offsetTop;
+      }
+    });
+    canvas.addEventListener("mouseup", () => (drawing = false));
+
+    canvas.addEventListener("mousemove", (event) => {
+      if (!drawing || !isDrawingTurn) return;
+
+      const x = event.clientX - canvas.offsetLeft;
+      const y = event.clientY - canvas.offsetTop;
+
+      socket.emit("draw", { prevX, prevY, x, y, color: selectedColor });
+
+      drawLine(prevX, prevY, x, y, selectedColor);
+      prevX = x;
+      prevY = y;
+    });
+
+    socket.on("draw", (data) => {
+      drawLine(data.prevX, data.prevY, data.x, data.y, data.color);
+    });
+
+    const guessInput = document.getElementById("guessInput");
+    guessInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        socket.emit("guess", guessInput.value);
+        guessInput.value = "";
+      }
+    });
+    socket.on("guess", (data) => {
+      const chat = document.getElementById("chat");
+      const li = document.createElement("li");
+      li.textContent = `${data.sender}: ${data.guess}`;
+      chat.appendChild(li);
+    });
+
+    const timerDiv = document.getElementById("timer");
+    socket.on("timer", (timeLeft) => {
+      timerDiv.textContent = `Time left: ${timeLeft}`;
+    });
+
+    function createElementFromHTML(htmlString) {
+      var div = document.createElement("div");
+      div.innerHTML = htmlString.trim();
+      return div.firstChild;
+    }
+  </script>
+
+  <style>
+    #colorPalette {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      width: 200px;
+      margin-bottom: 10px;
+    }
+
+    .colorRow {
+      display: flex;
+    }
+
+    canvas {
+      border: 2px solid black;
+    }
+
+    #chatWindow {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    #chat {
+      overflow-y: scroll;
+      background-color: #fdf5f6;
+      border: 1px solid black;
+    }
+
+    .colorBlock {
+      width: 20px;
+      height: 20px;
+      margin: 5px;
+      border: 1px solid #000;
+      cursor: pointer;
+    }
+
+    .colorBlock.selected {
+      border: 2px solid #000;
+    }
+  </style>
+</html>
