@@ -1,0 +1,5 @@
+services:
+  app:
+    image: s224404915
+    ports:
+      - 8080:3000
